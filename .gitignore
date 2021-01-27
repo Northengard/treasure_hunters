@@ -1,0 +1,3 @@
+*.idea
+/game_emulator/venv
+*/__pycache__/
