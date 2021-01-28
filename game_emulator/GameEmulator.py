@@ -1,5 +1,4 @@
 import numpy as np
-import seaborn as sns
 
 
 class GameEmulator(object):
@@ -10,7 +9,7 @@ class GameEmulator(object):
         field_size: Field size with borders
         ratio: Empty cell to loot ratio
         current_plr_pos: Current in game player's position
-        action_space: Dict with actions
+        make_step: Dict with actions
         game_map: Matrix containing game map
         agent_state: Information about backpack fillness of player
     """
@@ -20,34 +19,23 @@ class GameEmulator(object):
         Args:
             field_size: Field size with borders
             ratio: Empty cell to loot ratio
-            random_seed: Fixing numpy random seed
+            random_seed: numpy random seed fixation
         """
         if random_seed:
             np.random.seed(random_seed)
         self.ratio = ratio
         self.field_size = field_size
         self.current_plr_pos = (self.field_size // 2, self.field_size // 2)
-        self.action_space = {0: lambda x: (x[0] - 1, x[1]),  # up
-                             1: lambda x: (x[0], x[1] + 1),  # right
-                             2: lambda x: (x[0] + 1, x[1]),  # down
-                             3: lambda x: (x[0], x[1] - 1)}  # left
-        self.game_map = self.generate_char_map()
+        self.action_space = dict(zip(range(4), ['up', 'right', 'down', 'left']))
+        self.make_step = {0: lambda x: (x[0] - 1, x[1]),  # up
+                          1: lambda x: (x[0], x[1] + 1),  # right
+                          2: lambda x: (x[0] + 1, x[1]),  # down
+                          3: lambda x: (x[0], x[1] - 1)}  # left
+        self.game_map = self._generate_char_map()
         self.agent_state = False
+        self._supported_render_types = ['char', 'matrix', 'image']
 
-    # def generate_simple_map(self):
-    #     """
-    #     Returns:
-    #         Gamemap field_size x field_size filled by numbers
-    #     """
-    #     center = self.field_size // 2
-    #
-    #     game_map = np.random.randint(-1, 1, size=(self.field_size - 2, self.field_size - 2))
-    #     game_map = np.pad(game_map, pad_width=1, mode='constant', constant_values=-2)
-    #     game_map[center, center] = '2'
-    #
-    #     return game_map
-
-    def generate_char_map(self):
+    def _generate_char_map(self):
         """
         Returns:
             game_map: Matrix field_size x field_size filled by chars, where:
@@ -56,7 +44,7 @@ class GameEmulator(object):
                 e - edge cell,
                 s - stock
         """
-        stock_position = self.action_space[np.random.randint(4)](self.current_plr_pos)
+        stock_position = self.make_step[np.random.randint(4)](self.current_plr_pos)
 
         game_map = np.chararray((self.field_size - 2, self.field_size - 2))
         for i in range(game_map.shape[0]):
@@ -79,7 +67,7 @@ class GameEmulator(object):
         Returns:
             Player's position after acting
         """
-        return self.action_space[action](self.current_plr_pos)
+        return self.make_step[action](self.current_plr_pos)
 
     def step(self, action):
         """
@@ -110,31 +98,33 @@ class GameEmulator(object):
         self.current_plr_pos = next_pos
         return self.game_map, reward
 
-    def print_actions(self):
-        actions_list = sorted(list(self.action_space.keys()))
-        print(f'up: {actions_list[0]}')
-        print(f'right: {actions_list[1]}')
-        print(f'down: {actions_list[2]}')
-        print(f'left: {actions_list[3]}')
+    def render(self, render_type='char'):  # ToDo: support 'image' render type via openCV based render
+        if render_type not in self._supported_render_types:
+            print(f'render type {render_type} is not supported, use one of:\n{self._supported_render_types}')
+            return
+        if render_type == 'char':
+            current_map = self.game_map.copy()
+            current_map[self.current_plr_pos] = 'p'
+            print(current_map)
+            return current_map
+        elif render_type == 'matrix':
+            current_map = self.game_map.copy()
+            current_map[self.current_plr_pos] = 'p'
+            current_map = current_map.view(dtype=np.uint8)
+            print(current_map)
+            return current_map
+        elif render_type == 'image':
+            print('sorry, TBA))))')
+            return
 
-    def render(self):
-        current_map = self.game_map.copy()
-        current_map[self.current_plr_pos] = 'p'
+    def get_actions(self):
+        return self.action_space
 
-        print(current_map)
-        # sns.heatmap(current_map.view(dtype=np.uint8))
-
-        # print(self.game_map.view(dtype=np.uint8))
-        # print(np.savetxt(sys.stdout.buffer, self.game_map, fmt="%i"))
-
-
-# ToDo: animation, modify render func, action space method
 
 if __name__ == '__main__':
     env = GameEmulator(9, random_seed=42, ratio=3)
-    env.actions()
-    help(env)
-    env.render()
+    env.get_actions()
+    env.render('matrix')
     state, reward = env.step(0)
     state, reward = env.step(2)
     state, reward = env.step(2)
