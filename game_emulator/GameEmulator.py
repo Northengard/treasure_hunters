@@ -87,13 +87,13 @@ class GameEmulator(object):
         reward = -1
         if self.agent_state:
             if self.game_map[next_pos] in [b'e']:
-                return self.game_map
+                return self.game_map, reward
             elif self.game_map[next_pos] in [b's']:
                 self.agent_state = False
                 reward = 1
         else:
             if self.game_map[next_pos] in [b'e']:
-                return self.game_map
+                return self.game_map, reward
             elif self.game_map[next_pos] in [b'l']:
                 self.agent_state = True
                 self.game_map[next_pos] = 'f'
