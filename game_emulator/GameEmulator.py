@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 
 
 class GameEmulator(object):
@@ -12,9 +13,10 @@ class GameEmulator(object):
         make_step: Dict with actions
         game_map: Matrix containing game map
         agent_state: Information about backpack fillness of player
+        render_ratio: Ratio of map render
     """
 
-    def __init__(self, field_size, ratio=10, random_seed=None):
+    def __init__(self, field_size, ratio=10, random_seed=None, render_ratio=4):
         """
         Args:
             field_size: Field size with borders
@@ -25,6 +27,7 @@ class GameEmulator(object):
             np.random.seed(random_seed)
         self.ratio = ratio
         self.field_size = field_size
+        self.render_ratio = render_ratio
         self.current_plr_pos = (self.field_size // 2, self.field_size // 2)
         self.action_space = dict(zip(range(4), ['up', 'right', 'down', 'left']))
         self.make_step = {0: lambda x: (x[0] - 1, x[1]),  # up
@@ -98,34 +101,53 @@ class GameEmulator(object):
         self.current_plr_pos = next_pos
         return self.game_map, reward
 
-    def render(self, render_type='char'):  # ToDo: support 'image' render type via openCV based render
+    def animation_render(self, render_type='char', actions=None):
+        pass
+
+    def one_frame_render(self, render_type='char'):  # ToDo: support 'image' render type via openCV based render
+        current_map = self.game_map.copy()
+        current_map[self.current_plr_pos] = 'p'
         if render_type not in self._supported_render_types:
             print(f'render type {render_type} is not supported, use one of:\n{self._supported_render_types}')
             return
         if render_type == 'char':
-            current_map = self.game_map.copy()
-            current_map[self.current_plr_pos] = 'p'
             print(current_map)
             return current_map
         elif render_type == 'matrix':
-            current_map = self.game_map.copy()
-            current_map[self.current_plr_pos] = 'p'
             current_map = current_map.view(dtype=np.uint8)
             print(current_map)
             return current_map
         elif render_type == 'image':
-            print('sorry, TBA))))')
-            return
+            current_map = current_map.view(dtype=np.uint8)
+            current_map[np.where(current_map == 101)] = 0
+            current_map[np.where(current_map == 102)] = 255
+            current_map[np.where(current_map == 108)] = 128
+            current_map[np.where(current_map == 115)] = 55
+            current_map[np.where(current_map == 112)] = 200
+            current_map = cv2.resize(current_map, None, fx=self.render_ratio, fy=self.render_ratio,
+                                     interpolation=cv2.INTER_NEAREST)
+
+            cv2.imshow('map', current_map)
+            cv2.waitKey(300)
+        return current_map
 
     def get_actions(self):
         return self.action_space
 
 
 if __name__ == '__main__':
-    env = GameEmulator(9, random_seed=42, ratio=3)
+    env = GameEmulator(20, random_seed=42, ratio=3, render_ratio=50)
     env.get_actions()
-    env.render('matrix')
-    state, reward = env.step(0)
-    state, reward = env.step(2)
-    state, reward = env.step(2)
-    env.render()
+    map_ = env.one_frame_render('matrix')
+    map_ = env.one_frame_render('image')
+    cv2.waitKey(0)
+    # state, reward = env.step(0)
+    # state, reward = env.step(2)
+    # map_ = env.one_frame_render('image')
+    # state, reward = env.step(2)
+    # map_ = env.one_frame_render('image')
+    # state, reward = env.step(0)
+    # map_ = env.one_frame_render('image')
+    # import time
+    # time.sleep(10000)
+
