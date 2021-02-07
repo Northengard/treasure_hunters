@@ -61,7 +61,7 @@ class GameEmulator(object):
                 np.random.seed(self.random_seed)
             stock_position = self.make_step[np.random.randint(4)](self.player_pose)
 
-            game_map = np.chararray((self.field_size - 2, self.field_size - 2))
+            game_map = np.zeros((self.field_size - 2, self.field_size - 2)).astype(str)
             for i in range(game_map.shape[0]):
                 for j in range(game_map.shape[1]):
                     grid_element = np.random.choice(['f'] * int(100 - self.treasure_prob * 100) +
@@ -77,7 +77,7 @@ class GameEmulator(object):
             game_map, self._treasure_list = self.map_generator.get_maze()
             colors = self.map_generator.get_color_scheme()
             colors = {val: key for key, val in colors.items()}
-            char_map = np.chararray(game_map.shape[:2])
+            char_map = np.zeros(game_map.shape[:2]).astype(str)
             for x in range(game_map.shape[0]):
                 for y in range(game_map.shape[1]):
                     char_map[x, y] = colors[tuple(game_map[x, y])]
@@ -138,7 +138,7 @@ class GameEmulator(object):
             print(current_map)
             return current_map
         elif render_type == 'matrix':
-            current_map = current_map.view(dtype=np.uint8)
+            current_map = np.vectorize(ord)(current_map)
             print(current_map)
             return current_map
         elif render_type == 'image':
@@ -162,7 +162,7 @@ class GameEmulator(object):
 if __name__ == '__main__':
     env = GameEmulator(20, random_seed=42, treasure_prob=0.2, render_ratio=15)
     print(env.get_actions())
-    map_ = env.render('char')
+    map_ = env.render('matrix')
     map_ = env.render('image')
     cv2.waitKey(0)
     for act in [0, 3, 0, 1, 2]:
