@@ -1,6 +1,10 @@
+import sys
+from time import perf_counter
 import numpy as np
 import cv2
 from maze_generator import MapGenerator
+from naive_player import A_star_player
+from argparse import ArgumentParser
 
 
 class GameEmulator(object):
@@ -18,7 +22,7 @@ class GameEmulator(object):
     """
 
     def __init__(self, field_size, treasure_prob=0.2, generation_method=1, sparsity=2,
-                 random_seed=None, render_ratio=4):
+                 random_seed=None, render_ratio=4, max_game_steps=200):
         """
         Args:
             field_size: Field size with borders
@@ -30,11 +34,12 @@ class GameEmulator(object):
             np.random.seed(self.random_seed)
         self.treasure_prob = treasure_prob
         self.render_ratio = render_ratio
-        self.action_space = dict(zip(range(4), ['left', 'right', 'up', 'down']))
-        self.make_step = {0: lambda x: (x[0], x[1] - 1),  # left
+        self.action_space = dict(zip(range(4), ['up', 'right', 'down', 'left']))
+        self.make_step = {0: lambda x: (x[0] - 1, x[1]),  # up
                           1: lambda x: (x[0], x[1] + 1),  # right
-                          2: lambda x: (x[0] - 1, x[1]),  # up
-                          3: lambda x: (x[0] + 1, x[1])}  # down
+                          2: lambda x: (x[0] + 1, x[1]),  # down
+                          3: lambda x: (x[0], x[1] - 1)}  # left
+
         self._treasure_list = list()
         self.map_generator = MapGenerator(map_size=field_size // 2,
                                           treasure_prob=treasure_prob,
@@ -46,6 +51,8 @@ class GameEmulator(object):
         self.player_pose = (self.field_size // 2 + 2, self.field_size // 2 + 1)
         self.agent_state = False
         self._supported_render_types = ['char', 'matrix', 'image']
+        self.max_game_steps = max_game_steps
+        self.current_game_step = 0
 
     def _generate_map(self,  method=1):
         """
@@ -109,38 +116,41 @@ class GameEmulator(object):
         Returns:
             Modified matrix(game_map) and reward after making input action
         """
+
+        if self.max_game_steps <= self.current_game_step:
+            is_done = True
+        else:
+            self.current_game_step = self.current_game_step + 1
+            is_done = False
+
         next_pos = self.calc_next_position(action)
         reward = -1
         if self.agent_state:
             if self.game_map[next_pos] in ['e']:
-                return self.game_map, reward
+                return self.game_map, self.agent_state, reward, is_done
             elif self.game_map[next_pos] in ['s']:
                 self.agent_state = False
                 reward = 1
         else:
             if self.game_map[next_pos] == 'e':
-                return self.game_map, reward
+                return self.game_map, self.agent_state, reward, is_done
             elif self.game_map[next_pos] == 'l':
                 self.agent_state = True
                 self.game_map[next_pos] = 'f'
                 self._treasure_list.remove(list(next_pos))
 
         self.player_pose = next_pos
-        return self.game_map, reward
 
-    def render(self, render_type='char'):
+        return self.game_map, self.agent_state, reward, is_done
+
+    def render(self, render_type='char', visualize=False):
         current_map = self.game_map.copy()
         current_map[self.player_pose] = 'p'
         if render_type not in self._supported_render_types:
             print(f'render type {render_type} is not supported, use one of:\n{self._supported_render_types}')
             return
-        if render_type == 'char':
-            print(current_map)
-            return current_map
         elif render_type == 'matrix':
             current_map = np.vectorize(ord)(current_map)
-            print(current_map)
-            return current_map
         elif render_type == 'image':
             image = np.zeros([*current_map.shape, 3])
             colors = self.map_generator.get_color_scheme()
@@ -151,28 +161,47 @@ class GameEmulator(object):
             current_map = cv2.resize(image, None, fx=self.render_ratio, fy=self.render_ratio,
                                      interpolation=cv2.INTER_AREA)
 
-            cv2.imshow('map', current_map)
-            cv2.waitKey(500)
+            if visualize:
+                cv2.imshow('map', current_map)
+                cv2.waitKey(500)
+        if visualize and render_type != 'image':
+            print(current_map)
         return current_map
 
     def get_actions(self):
         return self.action_space
 
 
+def parse_args(args):
+    parser = ArgumentParser()
+    parser.add_argument("--player", type=str, default='a_star_player')
+    return parser.parse_args(args)
+
+
 if __name__ == '__main__':
-    env = GameEmulator(20, random_seed=42, treasure_prob=0.2, render_ratio=15)
-    print(env.get_actions())
-    map_ = env.render('matrix')
-    map_ = env.render('image')
-    cv2.waitKey(0)
-    for act in [0, 3, 0, 1, 2]:
-        state, reward = env.step(act)
-        map_ = env.render('image')
-    # state, reward = env.step(2)
-    # map_ = env.one_frame_render('image')
-    # state, reward = env.step(2)
-    # map_ = env.one_frame_render('image')
-    # state, reward = env.step(0)
-    # map_ = env.one_frame_render('image')
-    # import time
-    # time.sleep(10000)
+
+    args = parse_args(sys.argv[1:])
+
+    for maze_size in range(100, 200, 20):
+        start = perf_counter()
+        env = GameEmulator(maze_size, random_seed=42, treasure_prob=0.2, render_ratio=15)
+        print(f'maze ini time: {perf_counter() - start}s')
+        state_map, state_player = env.render('matrix'), False
+        total_reward = 0
+        env.render('image', visualize=False)
+        cv2.waitKey(1)
+
+        if args.player == "a_star_player":
+            start = perf_counter()
+            player = A_star_player(env.render("matrix"))
+            print(f'player ini time: {perf_counter() - start}s')
+    # while True:
+    #     action = player.get_action(state_map, state_player)
+    #     state_map, state_player, reward, is_done = env.step(action)
+    #     total_reward = total_reward + reward
+    #     map_ = env.render('image')
+    #
+    #     if is_done:
+    #         break
+
+    print(f"Game over: score of {player.name} : {total_reward}")
