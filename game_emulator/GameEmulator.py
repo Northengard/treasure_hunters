@@ -17,30 +17,33 @@ class GameEmulator(object):
         render_ratio: Ratio of map render
     """
 
-    def __init__(self, field_size, treasure_prob=0.2, generation_method=1, sparsity=2, random_seed=None, render_ratio=4):
+    def __init__(self, field_size, treasure_prob=0.2, generation_method=1, sparsity=2,
+                 random_seed=None, render_ratio=4):
         """
         Args:
             field_size: Field size with borders
             treasure_prob: Empty cell to loot ratio
             random_seed: numpy random seed fixation
         """
-        if random_seed:
-            np.random.seed(random_seed)
+        self.random_seed = random_seed
+        if self.random_seed:
+            np.random.seed(self.random_seed)
         self.treasure_prob = treasure_prob
         self.render_ratio = render_ratio
         self.action_space = dict(zip(range(4), ['left', 'right', 'up', 'down']))
-        self.make_step = {0: lambda x: (x[0] - 1, x[1]),  # left
-                          1: lambda x: (x[0] + 1, x[1]),  # right
-                          2: lambda x: (x[0], x[1] - 1),  # up
-                          3: lambda x: (x[0], x[1] + 1)}  # down
+        self.make_step = {0: lambda x: (x[0], x[1] - 1),  # left
+                          1: lambda x: (x[0], x[1] + 1),  # right
+                          2: lambda x: (x[0] - 1, x[1]),  # up
+                          3: lambda x: (x[0] + 1, x[1])}  # down
         self._treasure_list = list()
         self.map_generator = MapGenerator(map_size=field_size // 2,
                                           treasure_prob=treasure_prob,
                                           sparsity=sparsity,
-                                          scale=1)
+                                          scale=1,
+                                          random_seed=random_seed)
         self.game_map = self._generate_map(generation_method)
         self.field_size = self.game_map.shape[0]
-        self.player_pose = (self.field_size // 2 + 1, self.field_size // 2 + 2)
+        self.player_pose = (self.field_size // 2 + 2, self.field_size // 2 + 1)
         self.agent_state = False
         self._supported_render_types = ['char', 'matrix', 'image']
 
@@ -54,6 +57,8 @@ class GameEmulator(object):
                 s - stock
         """
         if method == 0:
+            if self.random_seed:
+                np.random.seed(self.random_seed)
             stock_position = self.make_step[np.random.randint(4)](self.player_pose)
 
             game_map = np.chararray((self.field_size - 2, self.field_size - 2))
@@ -118,13 +123,14 @@ class GameEmulator(object):
             elif self.game_map[next_pos] == 'l':
                 self.agent_state = True
                 self.game_map[next_pos] = 'f'
+                self._treasure_list.remove(list(next_pos))
 
         self.player_pose = next_pos
         return self.game_map, reward
 
     def render(self, render_type='char'):
         current_map = self.game_map.copy()
-        current_map[self.player_pose[::-1]] = 'p'
+        current_map[self.player_pose] = 'p'
         if render_type not in self._supported_render_types:
             print(f'render type {render_type} is not supported, use one of:\n{self._supported_render_types}')
             return
@@ -154,7 +160,7 @@ class GameEmulator(object):
 
 
 if __name__ == '__main__':
-    env = GameEmulator(20, random_seed=42, treasure_prob=3, render_ratio=15)
+    env = GameEmulator(20, random_seed=42, treasure_prob=0.2, render_ratio=15)
     print(env.get_actions())
     map_ = env.render('char')
     map_ = env.render('image')

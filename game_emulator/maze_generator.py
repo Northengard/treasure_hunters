@@ -38,7 +38,7 @@ class GridCell:
 
 
 class MapGenerator:
-    def __init__(self, map_size, sparsity=2, treasure_prob=0.3, center_size=3, scale=10):
+    def __init__(self, map_size, sparsity=2, treasure_prob=0.3, center_size=3, scale=10, random_seed=None):
         """
         map generator
         Args:
@@ -48,6 +48,10 @@ class MapGenerator:
             center_size: size of max clear center area
             scale: map scale_to_visualise
         """
+        self.random_seed = random_seed
+        if self.random_seed:
+            np.random.seed(self.random_seed)
+
         self.scale_percent = scale
         self._center_size = center_size
         self._sparsity = sparsity
