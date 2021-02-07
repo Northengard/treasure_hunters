@@ -56,7 +56,8 @@ class MapGenerator:
         self._wall_color = (20, 20, 20)
         self._walk_area_color = (210, 210, 210)
         self._treasure_color = (0, 255, 255)
-        self._treasury_color = (0, 166, 255)
+        self._treasure_room_color = (0, 166, 255)
+        self._player_color = (0, 0, 255)
         self._treasure_prob = treasure_prob
         self._grid = self._generate_maze()
         self._treasure_list = list()
@@ -65,7 +66,8 @@ class MapGenerator:
         return {'e': self._wall_color,
                 'f': self._walk_area_color,
                 'l': self._treasure_color,
-                's': self._treasury_color}
+                's': self._treasure_room_color,
+                'p': self._player_color}
 
     @staticmethod
     def _remove_walls(current: GridCell, choice: GridCell):
@@ -135,7 +137,7 @@ class MapGenerator:
                     draw_grid[grid_cell.x * 2 + 1][grid_cell.y * 2 + 1] = self._treasure_color
                     self._treasure_list.append([grid_cell.x * 2 + 1, grid_cell.y * 2 + 1])
         center_coord = self._map_size + 1
-        draw_grid[center_coord][center_coord] = self._treasury_color
+        draw_grid[center_coord][center_coord] = self._treasure_room_color
         return draw_grid
 
     def _prepare_grid(self):
