@@ -1,6 +1,5 @@
 import os
 import cv2
-import random
 import numpy as np
 
 
@@ -192,7 +191,7 @@ class MapGenerator:
                 children = current.has_children(grid)
 
                 if children:
-                    choice = random.choice(children)
+                    choice = np.random.choice(children)
                     choice.visited = True
 
                     stack.append(current)
