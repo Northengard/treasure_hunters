@@ -21,8 +21,8 @@ class GameEmulator(object):
         render_ratio: Ratio of map render
     """
 
-    def __init__(self, field_size, treasure_prob=0.2, generation_method=1, sparsity=2,
-                 random_seed=None, render_ratio=4, max_game_steps=200):
+    def __init__(self, field_size, treasure_prob=0.2, generation_method=0, sparsity=2,
+                 random_seed=None, render_ratio=4, max_game_steps=1000):
         """
         Args:
             field_size: Field size with borders
@@ -46,9 +46,10 @@ class GameEmulator(object):
                                           sparsity=sparsity,
                                           scale=1,
                                           random_seed=random_seed)
-        self.game_map = self._generate_map(generation_method)
-        self.field_size = self.game_map.shape[0]
+        self.field_size = field_size + 2
         self.player_pose = (self.field_size // 2 + 2, self.field_size // 2 + 1)
+        self.game_map = self._generate_map(generation_method)
+
         self.agent_state = False
         self._supported_render_types = ['char', 'matrix', 'image']
         self.max_game_steps = max_game_steps
@@ -72,10 +73,10 @@ class GameEmulator(object):
             for i in range(game_map.shape[0]):
                 for j in range(game_map.shape[1]):
                     grid_element = np.random.choice(['f'] * int(100 - self.treasure_prob * 100) +
-                                                    ['l'] * int(100 - self.treasure_prob * 100))
+                                                    ['l'] * int(self.treasure_prob * 100))
                     game_map[i, j] = grid_element
                     if grid_element == 'l':
-                        self._treasure_list.append([i, j])
+                        self._treasure_list.append([i+1, j+1])
             game_map[self.player_pose] = 'f'
             game_map = np.pad(game_map, pad_width=1, mode='constant', constant_values='e')
             game_map[stock_position] = 's'
@@ -127,13 +128,13 @@ class GameEmulator(object):
         reward = -1
         if self.agent_state:
             if self.game_map[next_pos] in ['e']:
-                return self.game_map, self.agent_state, reward, is_done
+                return self.render(render_type='matrix'), self.agent_state, reward, is_done
             elif self.game_map[next_pos] in ['s']:
                 self.agent_state = False
                 reward = 1
         else:
             if self.game_map[next_pos] == 'e':
-                return self.game_map, self.agent_state, reward, is_done
+                return self.render(render_type='matrix'), self.agent_state, reward, is_done
             elif self.game_map[next_pos] == 'l':
                 self.agent_state = True
                 self.game_map[next_pos] = 'f'
@@ -141,7 +142,7 @@ class GameEmulator(object):
 
         self.player_pose = next_pos
 
-        return self.game_map, self.agent_state, reward, is_done
+        return self.render(render_type='matrix'), self.agent_state, reward, is_done
 
     def render(self, render_type='char', visualize=False):
         current_map = self.game_map.copy()
@@ -163,7 +164,7 @@ class GameEmulator(object):
 
             if visualize:
                 cv2.imshow('map', current_map)
-                cv2.waitKey(500)
+                cv2.waitKey(50)
         if visualize and render_type != 'image':
             print(current_map)
         return current_map
