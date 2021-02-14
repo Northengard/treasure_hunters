@@ -3,7 +3,8 @@ from time import perf_counter
 import numpy as np
 import cv2
 from maze_generator import MapGenerator
-from naive_player import A_star_player
+from naive_player import AStarPlayer
+from naive_player import WavePlayer
 from argparse import ArgumentParser
 
 
@@ -46,13 +47,13 @@ class GameEmulator(object):
 
         self._treasure_list = list()
         self.field_size = field_size + 2
+        self.player_pose = (self.field_size // 2 + 1, self.field_size // 2)
         self.map_generator = MapGenerator(map_size=field_size // 2,
                                           treasure_prob=treasure_prob,
                                           sparsity=sparsity,
                                           scale=1,
                                           random_seed=random_seed)
 
-        self.player_pose = (self.field_size // 2 + 2, self.field_size // 2 + 1)
         self.generation_method = generation_method
         self.game_map = self._generate_map(generation_method)
 
@@ -192,13 +193,14 @@ class GameEmulator(object):
 
 def parse_args(arg_list):
     parser = ArgumentParser()
-    parser.add_argument("--player", type=str, default='a_star_player')
+    parser.add_argument("--player", type=str, default='wave_player')
     return parser.parse_args(arg_list)
 
 
 if __name__ == '__main__':
     args = parse_args(sys.argv[1:])
 
+    # for maze_size in range(20, 220, 20):
     maze_size = 20
     start = perf_counter()
     env = GameEmulator(maze_size, random_seed=42, treasure_prob=0.2, render_ratio=15, max_game_steps=200,
@@ -211,8 +213,13 @@ if __name__ == '__main__':
 
     if args.player == "a_star_player":
         start = perf_counter()
-        player = A_star_player(env.render("matrix"))
+        player = AStarPlayer(env.render("matrix"))
         print(f'player ini time: {perf_counter() - start}s')
+    if args.player == "wave_player":
+        start = perf_counter()
+        player = WavePlayer(env.render("matrix"))
+        print(f'player ini time: {perf_counter() - start}s')
+
     while True:
         action = player.get_action(state_map, state_player)
         state_map, state_player, reward, is_done = env.step(action)
