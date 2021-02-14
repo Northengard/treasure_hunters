@@ -27,7 +27,11 @@ class GameEmulator(object):
         Args:
             field_size: Field size with borders
             treasure_prob: Empty cell to loot ratio
+            generation_method: 0 - empty field with treasuers, 1 - maze generator
+            sparsity: maze generator parameter, affects
             random_seed: numpy random seed fixation
+            render_ratio: render scale coef
+            max_game_steps: maximum step in the game
         """
         self.random_seed = random_seed
         if self.random_seed:
@@ -41,13 +45,15 @@ class GameEmulator(object):
                           3: lambda x: (x[0], x[1] - 1)}  # left
 
         self._treasure_list = list()
+        self.field_size = field_size + 2
         self.map_generator = MapGenerator(map_size=field_size // 2,
                                           treasure_prob=treasure_prob,
                                           sparsity=sparsity,
                                           scale=1,
                                           random_seed=random_seed)
-        self.field_size = field_size + 2
+
         self.player_pose = (self.field_size // 2 + 2, self.field_size // 2 + 1)
+        self.generation_method = generation_method
         self.game_map = self._generate_map(generation_method)
 
         self.agent_state = False
@@ -126,25 +132,36 @@ class GameEmulator(object):
 
         next_pos = self.calc_next_position(action)
         reward = -1
-        if self.agent_state:
-            if self.game_map[next_pos] in ['e']:
-                return self.render(render_type='matrix'), self.agent_state, reward, is_done
-            elif self.game_map[next_pos] in ['s']:
-                self.agent_state = False
-                reward = 1
-        else:
-            if self.game_map[next_pos] == 'e':
-                return self.render(render_type='matrix'), self.agent_state, reward, is_done
-            elif self.game_map[next_pos] == 'l':
-                self.agent_state = True
-                self.game_map[next_pos] = 'f'
-                self._treasure_list.remove(list(next_pos))
 
-        self.player_pose = next_pos
+        if self.game_map[next_pos] != 'e':
+            if self.game_map[next_pos] == 's':
+                if self.agent_state:
+                    self.agent_state = False
+                    reward = 1
+            elif self.game_map[next_pos] == 'l':
+                if not self.agent_state:
+                    self.agent_state = True
+                    self.game_map[next_pos] = 'f'
+                    self._treasure_list.remove(list(next_pos))
+
+            self.player_pose = next_pos
 
         return self.render(render_type='matrix'), self.agent_state, reward, is_done
 
-    def render(self, render_type='char', visualize=False):
+    def reset(self):
+        """
+        reset enviroment to the start state
+        Returns:
+
+        """
+        self._treasure_list = list()
+        self.player_pose = (self.field_size // 2 + 2, self.field_size // 2 + 1)
+        self.game_map = self._generate_map(self.generation_method)
+        self.agent_state = False
+        is_done = False
+        return self.render(render_type='matrix'), self.agent_state, is_done
+
+    def render(self, render_type='char', visualize=False, wait_key=50):
         current_map = self.game_map.copy()
         current_map[self.player_pose] = 'p'
         if render_type not in self._supported_render_types:
@@ -164,7 +181,7 @@ class GameEmulator(object):
 
             if visualize:
                 cv2.imshow('map', current_map)
-                cv2.waitKey(50)
+                cv2.waitKey(wait_key)
         if visualize and render_type != 'image':
             print(current_map)
         return current_map
@@ -173,36 +190,36 @@ class GameEmulator(object):
         return self.action_space
 
 
-def parse_args(args):
+def parse_args(arg_list):
     parser = ArgumentParser()
     parser.add_argument("--player", type=str, default='a_star_player')
-    return parser.parse_args(args)
+    return parser.parse_args(arg_list)
 
 
 if __name__ == '__main__':
-
     args = parse_args(sys.argv[1:])
 
-    for maze_size in range(100, 200, 20):
-        start = perf_counter()
-        env = GameEmulator(maze_size, random_seed=42, treasure_prob=0.2, render_ratio=15)
-        print(f'maze ini time: {perf_counter() - start}s')
-        state_map, state_player = env.render('matrix'), False
-        total_reward = 0
-        env.render('image', visualize=False)
-        cv2.waitKey(1)
+    maze_size = 20
+    start = perf_counter()
+    env = GameEmulator(maze_size, random_seed=42, treasure_prob=0.2, render_ratio=15, max_game_steps=200,
+                       generation_method=1)
+    print(f'maze ini time: {perf_counter() - start}s')
+    state_map, state_player = env.render('matrix'), False
+    total_reward = 0
+    env.render('image', visualize=False)
+    cv2.waitKey(1)
 
-        if args.player == "a_star_player":
-            start = perf_counter()
-            player = A_star_player(env.render("matrix"))
-            print(f'player ini time: {perf_counter() - start}s')
-    # while True:
-    #     action = player.get_action(state_map, state_player)
-    #     state_map, state_player, reward, is_done = env.step(action)
-    #     total_reward = total_reward + reward
-    #     map_ = env.render('image')
-    #
-    #     if is_done:
-    #         break
+    if args.player == "a_star_player":
+        start = perf_counter()
+        player = A_star_player(env.render("matrix"))
+        print(f'player ini time: {perf_counter() - start}s')
+    while True:
+        action = player.get_action(state_map, state_player)
+        state_map, state_player, reward, is_done = env.step(action)
+        total_reward = total_reward + reward
+        map_ = env.render('image', visualize=True)
+
+        if is_done:
+            break
 
     print(f"Game over: score of {player.name} : {total_reward}")
