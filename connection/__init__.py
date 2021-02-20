@@ -1,3 +1,3 @@
-from .game_api import GameApi
+from .game_api import GameAPI
 
-__all__ = ['GameApi']
+__all__ = ['GameAPI']

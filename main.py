@@ -2,7 +2,9 @@ import os
 from argparse import ArgumentParser
 from time import perf_counter
 
-from connection import GameApi
+import numpy as np
+
+from connection import GameAPI
 from emulator import GameEmulator
 import agent
 
@@ -12,7 +14,7 @@ def parse_args(arg_list):
     parser = ArgumentParser('treasure hunters game')
     parser.add_argument("-p", "--player", type=str, default='WavePlayer',
                         help="agent type that will play")
-    parser.add_argument("-e", "--env", type=str, default='emu',
+    parser.add_argument("-e", "--env", type=str, default='real',
                         choices=['emu', 'real'],
                         help='environment type to play: choose emulator or real (it should already work)')
     parser.add_argument("--host-addr", type=str, default="tcp://localhost:5556",
@@ -45,7 +47,17 @@ if __name__ == '__main__':
                            random_seed=args.seed,
                            render_ratio=15)
     else:
-        env = GameApi(host_addr=args.host_addr)
+        env = GameAPI(host_addr=args.host_addr)
+
+    # gameApi test
+    # for _ in range(200):
+    #     action = np.random.randint(4)
+    #     ret_values = env.step(action)
+    #
+    #     print(ret_values)
+    #
+    # env.close_connection()
+
     print(f'maze ini time: {perf_counter() - start}s')
     state_map, state_player = env.render('matrix'), False
     total_reward = 0
