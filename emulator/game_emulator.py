@@ -2,10 +2,7 @@ import sys
 from time import perf_counter
 import numpy as np
 import cv2
-from maze_generator import MapGenerator
-from naive_player import AStarPlayer
-from naive_player import WavePlayer
-from argparse import ArgumentParser
+from .maze_generator import MapGenerator
 
 
 class GameEmulator(object):
@@ -22,13 +19,13 @@ class GameEmulator(object):
         render_ratio: Ratio of map render
     """
 
-    def __init__(self, field_size, treasure_prob=0.2, generation_method=0, sparsity=2,
+    def __init__(self, field_size, treasure_prob=0.2, generation_method='empty', sparsity=2,
                  random_seed=None, render_ratio=4, max_game_steps=1000):
         """
         Args:
             field_size: Field size with borders
             treasure_prob: Empty cell to loot ratio
-            generation_method: 0 - empty field with treasuers, 1 - maze generator
+            generation_method: 'empty' for 'no walls' method and or 'maze' for maze generation
             sparsity: maze generator parameter, affects
             random_seed: numpy random seed fixation
             render_ratio: render scale coef
@@ -44,7 +41,10 @@ class GameEmulator(object):
                           1: lambda x: (x[0], x[1] + 1),  # right
                           2: lambda x: (x[0] + 1, x[1]),  # down
                           3: lambda x: (x[0], x[1] - 1)}  # left
-
+        self._generation_methods = {'empty': 0, 'maze': 1}
+        generation_method = self._generation_methods.get(generation_method, None)
+        if not generation_method:
+            raise AssertionError(f"invalid generation method: use one of: {self._generation_methods.keys()}")
         self._treasure_list = list()
         self.field_size = field_size + 2
         self.player_pose = (self.field_size // 2 + 1, self.field_size // 2)
@@ -189,44 +189,3 @@ class GameEmulator(object):
 
     def get_actions(self):
         return self.action_space
-
-
-def parse_args(arg_list):
-    parser = ArgumentParser()
-    parser.add_argument("--player", type=str, default='wave_player')
-    return parser.parse_args(arg_list)
-
-
-if __name__ == '__main__':
-    args = parse_args(sys.argv[1:])
-
-    # for maze_size in range(20, 220, 20):
-    maze_size = 20
-    start = perf_counter()
-    env = GameEmulator(maze_size, random_seed=42, treasure_prob=0.2, render_ratio=15, max_game_steps=200,
-                       generation_method=1)
-    print(f'maze ini time: {perf_counter() - start}s')
-    state_map, state_player = env.render('matrix'), False
-    total_reward = 0
-    env.render('image', visualize=False)
-    cv2.waitKey(1)
-
-    if args.player == "a_star_player":
-        start = perf_counter()
-        player = AStarPlayer(env.render("matrix"))
-        print(f'player ini time: {perf_counter() - start}s')
-    if args.player == "wave_player":
-        start = perf_counter()
-        player = WavePlayer(env.render("matrix"))
-        print(f'player ini time: {perf_counter() - start}s')
-
-    while True:
-        action = player.get_action(state_map, state_player)
-        state_map, state_player, reward, is_done = env.step(action)
-        total_reward = total_reward + reward
-        map_ = env.render('image', visualize=True)
-
-        if is_done:
-            break
-
-    print(f"Game over: score of {player.name} : {total_reward}")
