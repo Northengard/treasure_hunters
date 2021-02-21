@@ -54,7 +54,7 @@ class GameEmulator(object):
                                           scale=1,
                                           random_seed=random_seed)
 
-        self.game_map = self._generate_map(generation_method)
+        self.game_map = self._generate_map(self.generation_method)
 
         self.agent_state = False
         self._supported_render_types = ['char', 'matrix', 'image']
