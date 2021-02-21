@@ -2,7 +2,7 @@ import sys
 from time import perf_counter
 import numpy as np
 import cv2
-from maze_generator import MapGenerator
+from .maze_generator import MapGenerator
 
 
 class GameEmulator(object):
@@ -44,8 +44,7 @@ class GameEmulator(object):
         self._generation_methods = {'empty': 0, 'maze': 1}
         if generation_method not in self._generation_methods.keys():
             raise AssertionError(f"invalid generation method: use one of: {self._generation_methods.keys()}")
-        generation_method = self._generation_methods.get(generation_method, None)
-
+        self.generation_method = self._generation_methods.get(generation_method, None)
         self._treasure_list = list()
         self.field_size = field_size + 2
         self.player_pose = (self.field_size // 2 + 1, self.field_size // 2)
@@ -55,7 +54,6 @@ class GameEmulator(object):
                                           scale=1,
                                           random_seed=random_seed)
 
-        self.generation_method = generation_method
         self.game_map = self._generate_map(generation_method)
 
         self.agent_state = False
