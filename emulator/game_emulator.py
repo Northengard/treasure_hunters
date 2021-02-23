@@ -46,8 +46,8 @@ class GameEmulator(object):
             raise AssertionError(f"invalid generation method: use one of: {self._generation_methods.keys()}")
         self.generation_method = self._generation_methods.get(generation_method, None)
         self._treasure_list = list()
-        self.field_size = field_size + 2
-        self.player_pose = (self.field_size // 2 + 1, self.field_size // 2)
+        self.field_size = field_size
+        self.player_pose = (self.field_size // 2 + 2, self.field_size // 2 + 1)
         self.map_generator = MapGenerator(map_size=field_size // 2,
                                           treasure_prob=treasure_prob,
                                           sparsity=sparsity,
@@ -73,9 +73,10 @@ class GameEmulator(object):
         if method == 0:
             if self.random_seed:
                 np.random.seed(self.random_seed)
-            stock_position = self.make_step[np.random.randint(4)](self.player_pose)
+            #stock_position = self.make_step[np.random.randint(4)](self.player_pose)
+            stock_position = (self.field_size // 2 + 1, self.field_size // 2 + 1)
 
-            game_map = np.zeros((self.field_size - 2, self.field_size - 2)).astype(str)
+            game_map = np.zeros((self.field_size, self.field_size)).astype(str)
             for i in range(game_map.shape[0]):
                 for j in range(game_map.shape[1]):
                     grid_element = np.random.choice(['f'] * int(100 - self.treasure_prob * 100) +
@@ -83,8 +84,8 @@ class GameEmulator(object):
                     game_map[i, j] = grid_element
                     if grid_element == 'l':
                         self._treasure_list.append([i+1, j+1])
-            game_map[self.player_pose] = 'f'
             game_map = np.pad(game_map, pad_width=1, mode='constant', constant_values='e')
+            game_map[self.player_pose] = 'f'
             game_map[stock_position] = 's'
             return game_map
         elif method == 1:
@@ -155,9 +156,10 @@ class GameEmulator(object):
 
         """
         self._treasure_list = list()
-        self.player_pose = (self.field_size // 2 + 2, self.field_size // 2 + 1)
+        self.player_pose = (self.field_size // 2 + 1, self.field_size // 2)
         self.game_map = self._generate_map(self.generation_method)
         self.agent_state = False
+        self.current_game_step = 0
         is_done = False
         return self.render(render_type='matrix'), self.agent_state, is_done
 
