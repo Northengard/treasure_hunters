@@ -1,5 +1,3 @@
-import sys
-from time import perf_counter
 import numpy as np
 import cv2
 from .maze_generator import MapGenerator
@@ -73,7 +71,6 @@ class GameEmulator(object):
         if method == 0:
             if self.random_seed:
                 np.random.seed(self.random_seed)
-            #stock_position = self.make_step[np.random.randint(4)](self.player_pose)
             stock_position = (self.field_size // 2 + 1, self.field_size // 2 + 1)
 
             game_map = np.zeros((self.field_size, self.field_size)).astype(str)
@@ -190,6 +187,7 @@ class GameEmulator(object):
 
     def get_actions(self):
         return self.action_space
+
 
 if __name__ == '__main__':
     env = GameEmulator(field_size=20, generation_method='empty')
