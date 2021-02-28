@@ -1,4 +1,5 @@
 import numpy as np
+import multiprocessing as mp
 
 
 class Node:
@@ -24,11 +25,11 @@ class Node:
 
 
 class NaivePlayer:
-    def __init__(self, state_matrix):
+    def __init__(self, state_matrix, loot_list=None):
         self.state_matrix = state_matrix
         self.start_node = self.get_node(112)
         self.treasury_room_node = self.get_node(115)
-        self.loot_list = self.create_loot_list()
+        self.loot_list = loot_list if loot_list else self.create_loot_list()
         self.agent_state = False
         self.paths_to_loot = self.search_paths_for_every_loot()
         self.strategy = self.create_strategy()
@@ -65,7 +66,7 @@ class NaivePlayer:
                 reversed_path.append(1)
         return list(reversed(reversed_path))
 
-    def get_action(self, state_map, state_player):
+    def get_action(self, _, __):
         action = self.strategy[self.action_index]
         self.action_index = self.action_index + 1
         return action
@@ -73,8 +74,8 @@ class NaivePlayer:
 
 # This function return the path of the search
 class AStarPlayer(NaivePlayer):
-    def __init__(self, state_matrix):
-        super(AStarPlayer, self).__init__(state_matrix)
+    def __init__(self, state_matrix, loot_list):
+        super(AStarPlayer, self).__init__(state_matrix, loot_list)
         self.name = 'A_star_player'
 
     def search_paths_for_every_loot(self):
@@ -248,7 +249,7 @@ class AStarPlayer(NaivePlayer):
 
 
 class WavePlayer(NaivePlayer):
-    def __init__(self, state_matrix):
+    def __init__(self, state_matrix, loot_list):
         self.name = 'wave_player'
         self.max_cost = int(10e5)
         self.costs_map = np.zeros(state_matrix.shape, dtype=int) + self.max_cost
@@ -257,12 +258,14 @@ class WavePlayer(NaivePlayer):
                                         [1, 0],  # go down
                                         [0, -1],  # go left
                                         ])
-        super(WavePlayer, self).__init__(state_matrix)
+        super(WavePlayer, self).__init__(state_matrix, loot_list)
 
     def get_neigbours(self, node):
         neigbours = self.possible_moves + node
         availability = [self.state_matrix[neigbour[0], neigbour[1]] != ord('e') for neigbour in neigbours]
-        return neigbours[availability].tolist()
+        neigbours = neigbours[availability].T
+        xx, yy = neigbours[0], neigbours[1]
+        return xx, yy
 
     def search_paths_for_every_loot(self):
         self.costs_map[self.treasury_room_node[0], self.treasury_room_node[1]] = 0
@@ -270,51 +273,46 @@ class WavePlayer(NaivePlayer):
         while len(stack) > 0:
             current_node = stack.pop(0)
             wave_value = self.costs_map[current_node[0], current_node[1]] + 1
-            neibours = self.get_neigbours(current_node)
-            for neigbour in neibours:
-                if self.costs_map[neigbour[0], neigbour[1]] == self.max_cost:
-                    stack.append(neigbour)
-                self.costs_map[neigbour[0], neigbour[1]] = np.min([self.costs_map[neigbour[0], neigbour[1]],
-                                                                   wave_value])
+            neighbours = self.get_neigbours(current_node)
+            to_visit = self.costs_map[neighbours] == self.max_cost
+            stack.extend([[neighbours[0][i], neighbours[1][i]] for i, flag in enumerate(to_visit) if flag])
+            self.costs_map[neighbours] = np.minimum(self.costs_map[neighbours], wave_value)
 
     def get_path(self, node):
         path = list()
         node_cost = self.costs_map[node[0], node[1]]
-        current_node = node
-        while node_cost != 0:
-            for move_type, move in enumerate(self.possible_moves):
-                neigbour = [current_node[0] - move[0], current_node[1] - move[1]]
-                if self.costs_map[neigbour[0], neigbour[1]] == (node_cost - 1):
-                    path.append(move_type)
-                    node_cost -= 1
-                    current_node = neigbour
-                    break
-        return path[::-1]
+        current_node = np.array(node)
+        for node_cost in range(node_cost, 0, -1):
+            neigbours = current_node - self.possible_moves
+            move_type = np.argmin(self.costs_map[neigbours[:, 0], neigbours[:, 1]])
+            path.append(move_type)
+            current_node = neigbours[move_type]
+            node_cost -= 1
+        path = path[::-1]
+        path += self.reverse_path(path)
+        return path
 
     def get_paths(self):
-        paths_list = [self.get_path(loot_coords) for loot_coords in self.loot_list]
+        if self.state_matrix.shape[0] >= 100:
+            with mp.Pool(mp.cpu_count()) as p:
+                paths_list = p.map(self.get_path, self.loot_list)
+        else:
+            paths_list = list(map(self.get_path, self.loot_list))
         return paths_list
 
     def create_strategy(self):
         paths = self.get_paths()
-        len_paths = [len(i) for i in paths]
+        len_paths = list(map(len, paths))
         sorted_idxs = np.argsort(len_paths)
         sorted_paths = np.array(paths)[sorted_idxs]
 
-        # path = self.search_new_step(self.state_matrix, 1, self.start_node,
-        #                             self.loot_list[sorted_idxs[0]])
-        # path_to_treasure_room = self.search_new_step(self.state_matrix, 1,
-        #                                              self.loot_list[sorted_idxs[0]],
-        #                                              self.treasury_room_node)
         action = [self.start_node[0] - self.treasury_room_node[0], self.start_node[1] - self.treasury_room_node[1]]
         action = self.possible_moves.tolist().index(action)
-        first_path = sorted_paths[0]
-        if first_path[0] == action:
-            strategy_actions = first_path[1:] + self.reverse_path(first_path)
-        else:
-            strategy_actions = self.reverse_path([action]) + first_path + self.reverse_path(first_path)
 
-        for path in sorted_paths[1:]:
-            strategy_actions += path
-            strategy_actions += self.reverse_path(path)
+        if sorted_paths[0][0] == action:
+            sorted_paths[0] = sorted_paths[0][1:]
+        else:
+            sorted_paths[0] = self.reverse_path([action]) + sorted_paths[0]
+
+        strategy_actions = [action for path in sorted_paths for action in path]
         return strategy_actions

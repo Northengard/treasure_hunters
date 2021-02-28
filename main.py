@@ -36,8 +36,8 @@ def parse_args(arg_list):
 if __name__ == '__main__':
     args = parse_args(os.sys.argv[1:])
 
-    # for maze_size in range(20, 220, 20):
-    maze_size = 20
+    # for maze_size in range(20, 1020, 100):
+    #     print(maze_size)
     start = perf_counter()
     if args.env == 'emu':
         env = GameEmulator(field_size=args.emu_map_size,
@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
     if args.player in ["AStarPlayer", "WavePlayer"]:
         start = perf_counter()
-        player = getattr(agent, args.player)(env.render("matrix"))
+        player = getattr(agent, args.player)(env.render("matrix"), env.get_treasure_list())
         print(f'player ini time: {perf_counter() - start}s')
 
     is_done = False

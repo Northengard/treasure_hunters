@@ -188,6 +188,9 @@ class GameEmulator(object):
     def get_actions(self):
         return self.action_space
 
+    def get_treasure_list(self):
+        return self._treasure_list
+
 
 if __name__ == '__main__':
     env = GameEmulator(field_size=20, generation_method='empty')
