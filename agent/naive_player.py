@@ -37,8 +37,11 @@ class NaivePlayer:
         self.name = 'naive_player'
 
     def get_node(self, type_node):
-        start_position = np.where(self.state_matrix == type_node)
-        return np.stack(start_position, axis=1).tolist()[0]
+        node_coordinates = np.where(self.state_matrix == type_node)
+        node_coordinates = np.stack(node_coordinates, axis=1).tolist()
+        if (len(node_coordinates) == 0) and (type_node == 115):
+            return self.start_node
+        return node_coordinates[0]
 
     def create_loot_list(self):
         loots = np.where(self.state_matrix == 108)
@@ -257,7 +260,7 @@ class WavePlayer(NaivePlayer):
                                         [0, 1],  # go right
                                         [1, 0],  # go down
                                         [0, -1],  # go left
-                                        ])
+                                        [0, 0]])
         super(WavePlayer, self).__init__(state_matrix, loot_list)
 
     def get_neigbours(self, node):
@@ -293,7 +296,7 @@ class WavePlayer(NaivePlayer):
         return path
 
     def get_paths(self):
-        if self.state_matrix.shape[0] >= 100:
+        if self.state_matrix.shape[0] >= 50:
             with mp.Pool(mp.cpu_count()) as p:
                 paths_list = p.map(self.get_path, self.loot_list)
         else:
@@ -309,10 +312,11 @@ class WavePlayer(NaivePlayer):
         action = [self.start_node[0] - self.treasury_room_node[0], self.start_node[1] - self.treasury_room_node[1]]
         action = self.possible_moves.tolist().index(action)
 
-        if sorted_paths[0][0] == action:
-            sorted_paths[0] = sorted_paths[0][1:]
-        else:
-            sorted_paths[0] = self.reverse_path([action]) + sorted_paths[0]
+        if action < self.possible_moves.shape[0] - 1:
+            if sorted_paths[0][0] == action:
+                sorted_paths[0] = sorted_paths[0][1:]
+            else:
+                sorted_paths[0] = self.reverse_path([action]) + sorted_paths[0]
 
         strategy_actions = [action for path in sorted_paths for action in path]
         return strategy_actions

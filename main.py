@@ -2,8 +2,6 @@ import os
 from argparse import ArgumentParser
 from time import perf_counter
 
-import numpy as np
-
 from connection import GameAPI
 from emulator import GameEmulator
 import agent
@@ -49,17 +47,8 @@ if __name__ == '__main__':
     else:
         env = GameAPI(host_addr=args.host_addr)
 
-    # gameApi test
-    # for _ in range(200):
-    #     action = np.random.randint(4)
-    #     ret_values = env.step(action)
-    #
-    #     print(ret_values)
-    #
-    # env.close_connection()
-
     print(f'maze ini time: {perf_counter() - start}s')
-    state_map, state_player = env.render('matrix'), False
+    state_map, state_player, reward, is_done = env.reset()
     total_reward = 0
     env.render('image', visualize=False)
 
@@ -68,7 +57,6 @@ if __name__ == '__main__':
         player = getattr(agent, args.player)(env.render("matrix"), env.get_treasure_list())
         print(f'player ini time: {perf_counter() - start}s')
 
-    is_done = False
     while not is_done:
         action = player.get_action(state_map, state_player)
         state_map, state_player, reward, is_done = env.step(action)
