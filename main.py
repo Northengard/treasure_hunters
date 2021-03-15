@@ -64,3 +64,6 @@ if __name__ == '__main__':
         map_ = env.render('image', visualize=True)
 
     print(f"Game over: score of {player.name} : {total_reward}")
+
+    if args.env == 'real':
+        env.close_connection()

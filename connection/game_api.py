@@ -59,7 +59,7 @@ class GameAPI:
         return game_map, player_state['isCarry'], reward, is_done
 
     def render(self, render_type='matrix', visualize=False, wait_key=50):
-        action_str = 'get_map'
+        action_str = "get_map"
         game_map = self._make_request(action_str)[0]
         return game_map
 
@@ -83,9 +83,7 @@ class GameAPI:
     def reset(self):
         self.socket.send_string("restart")
         _ = self.socket.recv_string()
-        self.close_connection()
-        self._establish_connection()
-        game_map, player_state, reward, is_done = self._make_request('get_state')
+        game_map, player_state, reward, is_done = self._make_request("get_map")
         return game_map, player_state, reward, is_done
 
     def close_connection(self):
