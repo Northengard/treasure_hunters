@@ -45,13 +45,12 @@ class GameEmulator(object):
         self.generation_method = self._generation_methods.get(generation_method, None)
         self._treasure_list = list()
         self.field_size = field_size
-        self.player_pose = (self.field_size // 2 + 2, self.field_size // 2 + 1)
+        self.player_pose = (self.field_size // 2 + 1, self.field_size // 2)
         self.map_generator = MapGenerator(map_size=field_size // 2,
                                           treasure_prob=treasure_prob,
                                           sparsity=sparsity,
                                           scale=1,
                                           random_seed=random_seed)
-
         self.game_map = self._generate_map(self.generation_method)
 
         self.agent_state = False
@@ -143,7 +142,8 @@ class GameEmulator(object):
                     self._treasure_list.remove(list(next_pos))
 
             self.player_pose = next_pos
-
+        if len(self._treasure_list) == 0:
+            is_done = True
         return self.render(render_type='matrix'), self.agent_state, reward, is_done
 
     def reset(self):
@@ -158,7 +158,8 @@ class GameEmulator(object):
         self.agent_state = False
         self.current_game_step = 0
         is_done = False
-        return self.render(render_type='matrix'), self.agent_state, is_done
+        reward = -1
+        return self.render(render_type='matrix'), self.agent_state, reward, is_done
 
     def render(self, render_type='char', visualize=False, wait_key=50):
         current_map = self.game_map.copy()

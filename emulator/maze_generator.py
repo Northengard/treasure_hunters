@@ -55,7 +55,7 @@ class MapGenerator:
         self._center_size = center_size
         self._sparsity = sparsity
         self._map_size = map_size
-        self._player_pose = np.array([map_size // 2 + 1]*2, dtype=int)
+        # self._player_pose = np.array([map_size + 1, map_size], dtype=int)
         self._wall_color = (20, 20, 20)
         self._walk_area_color = (210, 210, 210)
         self._treasure_color = (0, 255, 255)
@@ -134,12 +134,13 @@ class MapGenerator:
         return grid
 
     def _draw_treasures(self, draw_grid):
+        self._treasure_list.clear()
         for row in self._grid:
             for grid_cell in row:
                 if grid_cell.has_treasure:
                     draw_grid[grid_cell.x * 2 + 1][grid_cell.y * 2 + 1] = self._treasure_color
                     self._treasure_list.append([grid_cell.x * 2 + 1, grid_cell.y * 2 + 1])
-        center_coord = self._map_size + 1
+        center_coord = self._map_size
         draw_grid[center_coord][center_coord] = self._treasure_room_color
         return draw_grid
 

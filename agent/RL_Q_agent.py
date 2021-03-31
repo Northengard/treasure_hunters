@@ -9,7 +9,6 @@ import torch.nn.functional as F
 from emulator import GameEmulator
 from scipy.spatial import distance
 
-
 DISCOUNT = 1
 REPLAY_MEMORY_SIZE = 1000
 MIN_REPLAY_MEMORY_SIZE = 100
@@ -20,8 +19,6 @@ EPISODES = 4000
 
 EPSILON_DECAY = 0.995
 MIN_EPSILON = 0.001
-
-
 
 random.seed(1)
 np.random.seed(1)
@@ -62,6 +59,7 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
         self.conv1 = nn.Conv2d(1, 16, kernel_size=3, stride=2)
         self.bn1 = nn.BatchNorm2d(16)
+
         # self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=2)
         # self.bn2 = nn.BatchNorm2d(32)
         # self.conv3 = nn.Conv2d(32, 32, kernel_size=3, stride=2)
@@ -75,7 +73,7 @@ class DQN(nn.Module):
         convw = conv2d_size_out(w)
         convh = conv2d_size_out(h)
         linear_input_size = convw * convh * 16
-        self.head = nn.Linear(linear_input_size+1, outputs)
+        self.head = nn.Linear(linear_input_size + 1, outputs)
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
@@ -85,12 +83,12 @@ class DQN(nn.Module):
         # x = F.relu(self.bn3(self.conv3(x)))
         a_state = torch.Tensor(agent_state).unsqueeze(1).to("cuda:0")
         x = torch.flatten(x, start_dim=1)
-        x = torch.cat((x, a_state),dim=1)
+        x = torch.cat((x, a_state), dim=1)
         return self.head(x)
 
 
 class DQNAgent:
-    def __init__(self,size_w, size_h, n_actions):
+    def __init__(self, size_w, size_h, n_actions):
 
         self.model = self.create_model(size_w, size_h, n_actions)
 
@@ -131,7 +129,8 @@ class DQNAgent:
         X_agent_state = []
         y = []
 
-        for index, (current_state, curremt_agent_states, action, reward, new_current_state,new_current_agent_states, done) in enumerate(minibatch):
+        for index, (current_state, curremt_agent_states, action, reward, new_current_state, new_current_agent_states,
+                    done) in enumerate(minibatch):
 
             if not done:
                 max_future_q = np.max(future_qs_list[index])
@@ -164,11 +163,13 @@ class DQNAgent:
         input = torch.Tensor([state]).unsqueeze(1)
         input = input.to("cuda:0")
 
-        return self.model(input,[agent_state]).cpu().detach().numpy()
+        return self.model(input, [agent_state]).cpu().detach().numpy()
+
 
 def get_node(maze, type_node):
     start_position = np.where(maze == type_node)
     return np.stack(start_position, axis=1).tolist()[0]
+
 
 def create_loot_list(maze):
     loots = np.where(maze == 108)
@@ -176,11 +177,12 @@ def create_loot_list(maze):
 
 
 def generate_reward_map(state, stock_place):
-    reward_map = np.zeros((len(state),len(state)))
+    reward_map = np.zeros((len(state), len(state)))
     for i in range(len(state)):
         for j in range(len(state)):
-            reward_map[i][j] =  distance.euclidean([i,j], stock_place)
+            reward_map[i][j] = distance.euclidean([i, j], stock_place)
     return reward_map
+
 
 if __name__ == "__main__":
     size = 6
@@ -188,7 +190,7 @@ if __name__ == "__main__":
                        treasure_prob=0.2,
                        max_game_steps=50,
                        generation_method="empty",
-                       random_seed=42, # np.random.randint(1, 1000),
+                       random_seed=42,  # np.random.randint(1, 1000),
                        render_ratio=15)
     env.render('image', visualize=True)
 
@@ -199,7 +201,7 @@ if __name__ == "__main__":
     last_average_reward = 0
     ep_rewards = [-200]
 
-    agent = DQNAgent(size+1, size+1, n_actions)
+    agent = DQNAgent(size + 1, size + 1, n_actions)
 
     if not os.path.isdir('models'):
         os.makedirs('models')
@@ -227,13 +229,13 @@ if __name__ == "__main__":
             if new_agent_state:
                 reward_map = generate_reward_map(new_state, get_node(new_state, 115))
                 new_player_pose = get_node(new_state, 112)
-                reward = reward - reward_map[new_player_pose[0]][new_player_pose[1]]/len(new_state)
+                reward = reward - reward_map[new_player_pose[0]][new_player_pose[1]] / len(new_state)
             if current_agent_state and not new_agent_state:
                 reward = reward + 10
             if np.array_equal(new_state, current_state) and new_agent_state:
                 reward_map = generate_reward_map(new_state, get_node(new_state, 115))
                 new_player_pose = get_node(new_state, 112)
-                reward = reward - reward_map[new_player_pose[0]][new_player_pose[1]]/len(new_state)
+                reward = reward - reward_map[new_player_pose[0]][new_player_pose[1]] / len(new_state)
 
             # current_player_pose = get_node(current_state, 112)
             # if current_agent_state:
@@ -262,10 +264,10 @@ if __name__ == "__main__":
             # if new_dist_goal > current_dist_goal:
             #     reward = reward -1
 
-
             episode_reward += reward
 
-            agent.update_replay_memory((current_state, current_agent_state, action, reward, new_state, new_agent_state, done))
+            agent.update_replay_memory(
+                (current_state, current_agent_state, action, reward, new_state, new_agent_state, done))
 
             current_state = new_state
             current_agent_state = new_agent_state
@@ -282,7 +284,7 @@ if __name__ == "__main__":
             ep_tmp_reward.append(tmp_reward)
         tmp_reward = np.mean(ep_tmp_reward)
         ep_total_reward.append(tmp_reward)
-        print("Iteration - ", episode, "current reward - ", ep_rewards[-1], "Validation reward - " , tmp_reward)
+        print("Iteration - ", episode, "current reward - ", ep_rewards[-1], "Validation reward - ", tmp_reward)
         if tmp_reward >= last_average_reward:
             torch.save(agent.model, f'best_model_dql.model')
             last_average_reward = tmp_reward
@@ -315,4 +317,3 @@ if __name__ == "__main__":
             new_s, __, done, _ = env.step(action)
             env.render()
             state = new_s
-

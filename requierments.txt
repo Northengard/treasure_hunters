@@ -1,2 +1,6 @@
 numpy
 opencv-python
+zmq
+torch
+matplotlib
+scipy

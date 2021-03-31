@@ -50,7 +50,7 @@ if __name__ == '__main__':
     print(f'maze ini time: {perf_counter() - start}s')
     state_map, state_player, reward, is_done = env.reset()
     total_reward = 0
-    env.render('image', visualize=False)
+    env.render('image', visualize=True, wait_key=0)
 
     if args.player in ["AStarPlayer", "WavePlayer"]:
         start = perf_counter()
