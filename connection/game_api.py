@@ -36,14 +36,16 @@ class GameAPI:
         game_map[np.where(game_map == 0)] = 101
         treasure_coords = [[treasure['row'], treasure['col']] for treasure in treasures]
         treasure_coords = np.array(treasure_coords)
-        game_map[treasure_coords[:, 0], treasure_coords[:, 1]] = 108
+        if treasure_coords.shape[0] > 0:
+            game_map[treasure_coords[:, 0], treasure_coords[:, 1]] = 108
         game_map[player['row'], player['col']] = 112
         game_map = game_map[:, ::-1].T
 
         self.treasure_list = treasure_coords
-        self.treasure_list[:, 1] = game_map.shape[0] - 1 - self.treasure_list[:, 1]
-        self.treasure_list[:, [0, 1]] = self.treasure_list[:, [1, 0]]
-        self.treasure_list = self.treasure_list.tolist()
+        if self.treasure_list.shape[0] > 0:
+            self.treasure_list[:, 1] = game_map.shape[0] - 1 - self.treasure_list[:, 1]
+            self.treasure_list[:, [0, 1]] = self.treasure_list[:, [1, 0]]
+            self.treasure_list = self.treasure_list.tolist()
         return game_map
 
     def _make_request(self, request_str):
